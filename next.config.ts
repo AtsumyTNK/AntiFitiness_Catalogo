@@ -8,10 +8,10 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       // Mercado Livre
-      { protocol: "https", hostname: "http2.mlstatic.com" },
+      { protocol: "https", hostname: "**" },
 
-      // Tcdn/Tray (apareceu no seu erro)
-      { protocol: "https", hostname: "images.tcdn.com.br" },
+      /* Tcdn/Tray (apareceu no seu erro)
+      { protocol: "https", hostname: "images.tcdn.com.br" }, */
     ],
   },
 };
