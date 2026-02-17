@@ -4,21 +4,39 @@ import { supabase } from "@/lib/supabase";
  * ============================================================
  * Tipos do banco (Supabase)
  * ============================================================
+ *
+ * Observação importante:
+ * - Agora vamos suportar CATEGORIAS de verdade.
+ * - Para isso, você precisa ter a coluna `category` (tipo text) na tabela `products`.
+ *
+ * Tabela: products
+ *  - sku (text) [PK ou unique]
+ *  - name (text)
+ *  - description (text)
+ *  - photo_url (text, pode ser null)
+ *  - category (text, pode ser null)  ✅ NOVO
  */
 
 /**
  * Produto como vem do banco.
- * Observação:
- * - Removido status_label porque a UI foi padronizada em "ENCOMENDA".
- * - Se sua coluna description puder ser null, ajuste o tipo para `string | null`.
+ * - category pode ser null (se você não preencher em algum produto)
  */
 export type DbProduct = {
   sku: string;
   name: string;
   description: string;
   photo_url: string | null;
+  category: string | null;
 };
 
+/**
+ * Variação como vem do banco.
+ * Tabela: product_variants
+ * - id (uuid)
+ * - product_sku (text) -> referencia products.sku (idealmente)
+ * - label (text)
+ * - sort_order (int)
+ */
 export type DbVariant = {
   id: string;
   product_sku: string;
@@ -30,8 +48,10 @@ export type DbVariant = {
  * ============================================================
  * Tipo final que a UI consome (Catálogo e Produto)
  * ============================================================
- * - status e status das variantes são fixos: "ENCOMENDA"
- * - category está vazio por enquanto (pode vir do banco no futuro)
+ * Regras do projeto:
+ * - status do produto é fixo: "ENCOMENDA"
+ * - status das variantes é fixo: "ENCOMENDA"
+ * - category agora vem do banco (products.category)
  */
 export type CatalogProduct = {
   id: string;
@@ -70,10 +90,25 @@ function slugify(name: string): string {
 
 /**
  * ============================================================
+ * Normalização de categoria
+ * ============================================================
+ * Evita:
+ * - categoria vazia quebrando o filtro (fica "")
+ * - espaços sobrando criando categorias duplicadas (ex: "Mix " vs "Mix")
+ *
+ * Dica: se você quiser forçar um padrão (ex: Title Case), dá pra fazer aqui.
+ */
+function normalizeCategory(input: unknown): string {
+  if (typeof input !== "string") return "";
+  return input.trim();
+}
+
+/**
+ * ============================================================
  * fetchCatalogProducts
  * ============================================================
  * Busca:
- * - products (SKU, nome, descrição, foto)
+ * - products (SKU, nome, descrição, foto, categoria)
  * - product_variants (vinculadas por product_sku)
  *
  * Retorna no formato exato da UI.
@@ -81,10 +116,11 @@ function slugify(name: string): string {
 export async function fetchCatalogProducts(): Promise<CatalogProduct[]> {
   /**
    * 1) Produtos
+   * - IMPORTANTE: incluímos `category` no select.
    */
   const { data: productsRaw, error: pErr } = await supabase
     .from("products")
-    .select("sku,name,description,photo_url")
+    .select("sku,name,description,photo_url,category")
     .order("name", { ascending: true });
 
   if (pErr) throw new Error(pErr.message);
@@ -116,16 +152,26 @@ export async function fetchCatalogProducts(): Promise<CatalogProduct[]> {
 
   /**
    * 4) Monta o shape final da UI
+   * - category vem do banco (products.category)
+   * - fallback: "" (assim o filtro só funciona quando você preencher)
    */
   return products.map((p) => {
     const v = bySku.get(p.sku) ?? [];
 
+    // “Blindagem” básica (evita undefined em edge-cases)
     const safeName = p.name ?? "";
     const safeDescription = p.description ?? "";
 
+    // Slug sempre válido (se slugify falhar, usa o SKU)
     const slug = slugify(safeName) || p.sku;
+
+    // Imagem: se não tiver URL, cai no placeholder local
     const imageUrl = p.photo_url || "/placeholder.png";
 
+    // Categoria: agora vem do banco
+    const category = normalizeCategory(p.category);
+
+    // Variações: garante pelo menos 1 opção pra UI nunca quebrar
     const mappedVariants =
       v.length > 0
         ? v.map((x) => ({
@@ -148,7 +194,7 @@ export async function fetchCatalogProducts(): Promise<CatalogProduct[]> {
       description: safeDescription,
       images: [imageUrl],
       status: "ENCOMENDA",
-      category: "",
+      category,
       variants: mappedVariants,
     };
   });
