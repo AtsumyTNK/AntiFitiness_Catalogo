@@ -397,14 +397,14 @@ export default function CatalogoPage() {
                   key={p.id}
                   className="group overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.9)] transition hover:-translate-y-0.5 hover:bg-white/7"
                 >
-                  <div className="relative">
-                    <div className="relative aspect-4/3 w-full bg-white/5">
+                  <div className="relative">  
+                    <div className="relative aspect-square w-full overflow-hidden bg-white/5">
                       <Image
                         src={img}
                         alt={p.name}
                         fill
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        className="object-cover opacity-95 transition group-hover:opacity-100"
+                        className="object-contain transition-transform duration-500 group-hover:scale-110"
                       />
                     </div>
 
