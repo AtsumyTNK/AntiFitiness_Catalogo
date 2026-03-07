@@ -1,26 +1,5 @@
-import { supabase } from "@/lib/supabase";
+  import { supabase } from "@/lib/supabase";
 
-/**
- * ============================================================
- * Tipos do banco (Supabase)
- * ============================================================
- *
- * Observação importante:
- * - Agora vamos suportar CATEGORIAS de verdade.
- * - Para isso, você precisa ter a coluna `category` (tipo text) na tabela `products`.
- *
- * Tabela: products
- *  - sku (text) [PK ou unique]
- *  - name (text)
- *  - description (text)
- *  - photo_url (text, pode ser null)
- *  - category (text, pode ser null)  ✅ NOVO
- */
-
-/**
- * Produto como vem do banco.
- * - category pode ser null (se você não preencher em algum produto)
- */
 export type DbProduct = {
   sku: string;
   name: string;

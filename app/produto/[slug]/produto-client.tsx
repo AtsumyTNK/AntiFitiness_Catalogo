@@ -2,6 +2,7 @@
 "use client";
 
 import { addToCart } from "@/lib/cart";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -10,7 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
  * Estrutura mínima esperada de /api/products.
  */
 type ApiProduct = {
-  id: string; // sku
+  id: string;
   slug: string;
   name: string;
   description: string;
@@ -21,17 +22,17 @@ type ApiProduct = {
 };
 
 /**
- * Mensagem padrão exigida:
- * - Deve aparecer em todos os produtos e variações
+ * Mensagem padrão exibida na página do produto.
  */
 const WHATS_AVAILABILITY_NOTE = "Verificar disponibilidade no WhatsApp.";
 
 /**
- * Normaliza slug para comparação segura (case-insensitive, sem query/hash).
+ * Normaliza slug para comparação segura.
  */
 function normalizeSlug(input: unknown): string {
   if (typeof input !== "string") return "";
   const noQuery = input.split("?")[0].split("#")[0];
+
   try {
     return decodeURIComponent(noQuery).trim().toLowerCase();
   } catch {
@@ -39,14 +40,18 @@ function normalizeSlug(input: unknown): string {
   }
 }
 
+/**
+ * Mantém o valor dentro de um intervalo permitido.
+ */
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
 }
 
 /**
- * ProdutoClient
- * - Carrega /api/products e filtra pelo slug.
- * - Adiciona ao carrinho sem alert (feedback silencioso no botão).
+ * Página de produto:
+ * - carrega a lista de produtos
+ * - localiza pelo slug
+ * - permite adicionar ao carrinho com feedback visual
  */
 export default function ProdutoClient(props?: { slug?: string }) {
   const params = useParams<{ slug?: string }>();
@@ -59,9 +64,7 @@ export default function ProdutoClient(props?: { slug?: string }) {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   /**
-   * UI state:
-   * - botão mostra feedback rápido sem alert
-   * - erro de estoque aparece como bloco (sem popup)
+   * Controle de feedback visual do botão e aviso inline.
    */
   const [justAdded, setJustAdded] = useState(false);
   const [inlineNotice, setInlineNotice] = useState<string | null>(null);
@@ -74,7 +77,7 @@ export default function ProdutoClient(props?: { slug?: string }) {
   }, []);
 
   /**
-   * Carrega a lista de produtos.
+   * Carrega os produtos da API.
    */
   useEffect(() => {
     let alive = true;
@@ -99,13 +102,14 @@ export default function ProdutoClient(props?: { slug?: string }) {
     }
 
     run();
+
     return () => {
       alive = false;
     };
   }, []);
 
   /**
-   * Seleciona o produto pelo slug normalizado.
+   * Busca o produto atual com base no slug da URL.
    */
   const product = useMemo(() => {
     if (!normalizedSlug) return undefined;
@@ -113,7 +117,7 @@ export default function ProdutoClient(props?: { slug?: string }) {
   }, [items, normalizedSlug]);
 
   /**
-   * Variações: fallback seguro
+   * Garante uma variação padrão caso o produto venha sem variantes.
    */
   const variantOptions = useMemo(() => {
     if (!product) return [];
@@ -129,14 +133,16 @@ export default function ProdutoClient(props?: { slug?: string }) {
 
   const effectiveVariantId = variantId || firstVariantId;
 
+  /**
+   * Define a variação selecionada de forma segura.
+   */
   const selectedVariant = useMemo(() => {
     if (!product) return null;
     return variantOptions.find((v) => v.id === effectiveVariantId) ?? variantOptions[0] ?? null;
   }, [product, variantOptions, effectiveVariantId]);
 
   /**
-   * Pode adicionar?
-   * - Bloqueia somente SEM_ESTOQUE (por segurança)
+   * Permite adicionar ao carrinho apenas se a variação não estiver sem estoque.
    */
   const canAdd = useMemo(() => {
     if (!product || !selectedVariant) return false;
@@ -144,15 +150,11 @@ export default function ProdutoClient(props?: { slug?: string }) {
   }, [product, selectedVariant]);
 
   /**
-   * Adiciona ao carrinho sem alert.
-   * Feedback:
-   * - muda texto do botão por ~1.2s
-   * - se SEM_ESTOQUE: mostra aviso inline
+   * Adiciona o item ao carrinho com feedback visual no botão.
    */
   function add() {
     if (!product || !selectedVariant) return;
 
-    // Limpa avisos anteriores
     setInlineNotice(null);
 
     if (selectedVariant.status === "SEM_ESTOQUE") {
@@ -168,8 +170,8 @@ export default function ProdutoClient(props?: { slug?: string }) {
       qty,
     });
 
-    // Feedback silencioso
     setJustAdded(true);
+
     if (addedTimerRef.current) window.clearTimeout(addedTimerRef.current);
     addedTimerRef.current = window.setTimeout(() => setJustAdded(false), 1200);
   }
@@ -234,14 +236,29 @@ export default function ProdutoClient(props?: { slug?: string }) {
 
   return (
     <main className="min-h-screen bg-neutral-950 text-white">
-      {/* Header */}
+      {/* Header principal */}
       <header className="sticky top-0 z-20 border-b border-white/10 bg-neutral-950/60 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
-          <div className="leading-tight">
-            <p className="text-xs text-white/50">Produto</p>
-            <h1 className="text-lg font-semibold tracking-tight">AntiFitness</h1>
+          {/* Bloco da marca */}
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10">
+              <Image
+                src="/logo.svg"
+                alt="Logo AntiFitness"
+                width={40}
+                height={40}
+                className="h-10 w-10 object-contain"
+                priority
+              />
+            </div>
+
+            <div className="leading-tight">
+              <p className="text-xs text-white/50">Produto</p>
+              <h1 className="text-lg font-semibold tracking-tight">AntiFitness</h1>
+            </div>
           </div>
 
+          {/* Navegação do topo */}
           <div className="flex items-center gap-2">
             <Link
               href="/catalogo"
@@ -249,6 +266,7 @@ export default function ProdutoClient(props?: { slug?: string }) {
             >
               Catálogo
             </Link>
+
             <Link
               href="/carrinho"
               className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-white/90"
@@ -258,7 +276,7 @@ export default function ProdutoClient(props?: { slug?: string }) {
           </div>
         </div>
 
-        {/* Mensagem fixa exigida */}
+        {/* Faixa informativa fixa */}
         <div className="border-t border-white/10 bg-neutral-950/40">
           <div className="mx-auto max-w-6xl px-4 py-2">
             <p className="text-xs text-white/70">{WHATS_AVAILABILITY_NOTE}</p>
@@ -266,9 +284,9 @@ export default function ProdutoClient(props?: { slug?: string }) {
         </div>
       </header>
 
-      {/* Content */}
+      {/* Conteúdo da página */}
       <section className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
-        {/* Breadcrumb simples */}
+        {/* Breadcrumb */}
         <div className="mb-4 text-sm text-white/60">
           <Link href="/catalogo" className="hover:text-white">
             Catálogo
@@ -278,7 +296,7 @@ export default function ProdutoClient(props?: { slug?: string }) {
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
-          {/* Coluna da imagem/descrição */}
+          {/* Bloco de imagem e descrição */}
           <div className="md:col-span-7">
             <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5">
               <div className="relative">
@@ -286,7 +304,6 @@ export default function ProdutoClient(props?: { slug?: string }) {
                   <img src={img} alt={product.name} className="h-full w-full object-cover opacity-95" />
                 </div>
 
-                {/* Aviso exigido também no bloco do produto */}
                 <div className="absolute left-4 top-4 max-w-[90%]">
                   <div className="rounded-2xl border border-white/10 bg-neutral-950/55 px-3 py-2 text-xs text-white/80 backdrop-blur">
                     {WHATS_AVAILABILITY_NOTE}
@@ -303,14 +320,13 @@ export default function ProdutoClient(props?: { slug?: string }) {
             </div>
           </div>
 
-          {/* Coluna de compra */}
+          {/* Bloco de compra */}
           <aside className="md:col-span-5">
             <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
               <h2 className="text-lg font-semibold tracking-tight">{product.name}</h2>
 
               <p className="mt-2 text-sm text-white/60">{WHATS_AVAILABILITY_NOTE}</p>
 
-              {/* Variação */}
               <div className="mt-5">
                 <label className="text-sm font-medium text-white/80">Variação</label>
 
@@ -330,12 +346,10 @@ export default function ProdutoClient(props?: { slug?: string }) {
                   ))}
                 </select>
 
-                {/* Mensagem fixa também no bloco de variação */}
                 <div className="mt-3 rounded-3xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
                   {WHATS_AVAILABILITY_NOTE}
                 </div>
 
-                {/* Aviso inline (sem alert) */}
                 {inlineNotice && (
                   <div className="mt-3 rounded-3xl border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-200">
                     {inlineNotice}
@@ -343,7 +357,6 @@ export default function ProdutoClient(props?: { slug?: string }) {
                 )}
               </div>
 
-              {/* Quantidade */}
               <div className="mt-4">
                 <label className="text-sm font-medium text-white/80">Quantidade</label>
 
@@ -370,7 +383,6 @@ export default function ProdutoClient(props?: { slug?: string }) {
                 </div>
               </div>
 
-              {/* Ações */}
               <div className="mt-6 grid grid-cols-1 gap-2">
                 <button
                   type="button"

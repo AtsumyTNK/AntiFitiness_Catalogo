@@ -1,18 +1,22 @@
 "use client";
 
 import { CartItem, getCart } from "@/lib/cart";
+import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
 const WHATS_NUMBER = "5517981229285";
 const WHATS_AVAILABILITY_NOTE = "Verificar disponibilidade no WhatsApp.";
 
+/**
+ * Monta a URL do WhatsApp com a mensagem pronta.
+ */
 function buildWhatsUrl(message: string) {
   return `https://wa.me/${WHATS_NUMBER}?text=${encodeURIComponent(message)}`;
 }
 
 /**
- * Compat Layer para evitar quebrar se o carrinho estiver no formato antigo/novo.
+ * Compatibilidade com formatos antigos e novos do carrinho.
  */
 type LegacyCartFields = Partial<{
   productName: string;
@@ -32,19 +36,30 @@ function asCompat(i: CartItem): CartItemCompat {
   return i as CartItemCompat;
 }
 
+/**
+ * Retorna a quantidade de forma segura.
+ */
 function getQty(i: CartItem): number {
   const c = asCompat(i);
   const raw = c.qty ?? c.quantity ?? 0;
   const n = Number(raw);
+
   if (!Number.isFinite(n)) return 0;
+
   return Math.max(0, Math.floor(n));
 }
 
+/**
+ * Retorna o nome do produto de forma segura.
+ */
 function getName(i: CartItem): string {
   const c = asCompat(i);
   return String(c.name ?? c.productName ?? "Produto");
 }
 
+/**
+ * Retorna a variação de forma segura.
+ */
 function getVariantLabel(i: CartItem): string {
   const c = asCompat(i);
   return String(c.variantLabel ?? "Padrão");
@@ -52,9 +67,7 @@ function getVariantLabel(i: CartItem): string {
 
 export default function HomePage() {
   /**
-   * Lê o carrinho apenas no client (lazy initializer).
-   * - Evita useEffect => não cai no eslint react-hooks/set-state-in-effect
-   * - No SSR: retorna [] (porque window não existe)
+   * Lê o carrinho no client sem depender de useEffect.
    */
   const [items] = useState<CartItem[]>(() => {
     if (typeof window === "undefined") return [];
@@ -62,10 +75,13 @@ export default function HomePage() {
   });
 
   /**
-   * Total de itens calculado de forma compatível (qty/quantity).
+   * Soma a quantidade total de itens do carrinho.
    */
   const totalItems = useMemo(() => items.reduce((acc, i) => acc + getQty(i), 0), [items]);
 
+  /**
+   * Monta a mensagem que será enviada para o WhatsApp.
+   */
   function buildMessageFromCart() {
     const current = getCart();
     const total = current.reduce((acc, i) => acc + getQty(i), 0);
@@ -83,12 +99,17 @@ export default function HomePage() {
     ].join("\n");
   }
 
+  /**
+   * Abre o WhatsApp com a lista pronta.
+   */
   function openWhatsAppWithCart() {
     const current = getCart();
+
     if (current.length === 0) {
       alert("Seu carrinho está vazio. Adicione produtos antes de enviar no WhatsApp.");
       return;
     }
+
     window.location.href = buildWhatsUrl(buildMessageFromCart());
   }
 
@@ -96,26 +117,36 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-neutral-950 text-white">
-      {/* Background decor */}
+      {/* Fundo decorativo */}
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute -top-40 left-1/2 h-130 w-130 -translate-x-1/2 rounded-full bg-emerald-500/20 blur-[90px]" />
         <div className="absolute -bottom-40 right-0 h-130 w-130 rounded-full bg-sky-500/10 blur-[90px]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.10),transparent_60%)]" />
       </div>
 
-      {/* Header */}
+      {/* Header principal */}
       <header className="sticky top-0 z-20 border-b border-white/10 bg-neutral-950/60 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+          {/* Bloco da marca */}
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/10">
-              <span className="text-base font-semibold">AF</span>
+            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10">
+              <Image
+                src="/logo.svg"
+                alt="Logo AntiFitness"
+                width={40}
+                height={40}
+                className="h-10 w-10 object-contain"
+                priority
+              />
             </div>
+
             <div className="leading-tight">
               <p className="text-sm text-white/70">Catálogo</p>
               <h1 className="text-base font-semibold tracking-tight">AntiFitness</h1>
             </div>
           </div>
 
+          {/* Navegação principal */}
           <div className="flex items-center gap-2">
             <Link
               href="/catalogo"
@@ -134,7 +165,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero */}
+      {/* Conteúdo principal da home */}
       <section className="mx-auto max-w-6xl px-4 pb-8 pt-10">
         <div className="grid gap-6 md:grid-cols-12 md:items-center">
           <div className="md:col-span-7">
@@ -182,7 +213,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Cards */}
+          {/* Blocos laterais */}
           <div className="md:col-span-5">
             <div className="grid gap-3">
               <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.8)]">
@@ -232,6 +263,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Rodapé */}
       <footer className="mx-auto max-w-6xl px-4 pb-10 pt-6 text-xs text-white/40">
         AntiFitness • Catálogo simples e rápido
       </footer>
