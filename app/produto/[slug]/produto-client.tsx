@@ -376,7 +376,7 @@ export default function ProdutoClient(props?: { slug?: string }) {
               ×
             </button>
 
-            <div className="relative flex max-h-[85vh] min-h-[280px] items-center justify-center overflow-hidden rounded-3xl bg-white p-3 sm:p-4">
+            <div className="relative flex max-h-[85vh] min-h-70 items-center justify-center overflow-hidden rounded-3xl bg-white p-3 sm:p-4">
               <div className="relative h-[60vh] w-full max-w-[88vw] sm:h-[68vh] sm:max-w-[72vw] lg:max-w-3xl">
                 <Image
                   src={img}

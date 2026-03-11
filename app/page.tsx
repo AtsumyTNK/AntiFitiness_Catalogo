@@ -9,6 +9,16 @@ const WHATS_NUMBER = "5517981229285";
 const WHATS_AVAILABILITY_NOTE = "Verificar disponibilidade no WhatsApp.";
 
 /**
+ * Número e mensagem do nutricionista.
+ */
+const NUTRI_WHATS_NUMBER = "5517997429113";
+const NUTRI_WHATS_MESSAGE =
+  "Olá! Vim pelo Catálogo Online do AntiFitness e gostaria de falar com o nutricionista.";
+const NUTRI_WHATS_LINK = `https://wa.me/${NUTRI_WHATS_NUMBER}?text=${encodeURIComponent(
+  NUTRI_WHATS_MESSAGE
+)}`;
+
+/**
  * Monta a URL do WhatsApp com a mensagem pronta.
  */
 function buildWhatsUrl(message: string) {
@@ -148,6 +158,15 @@ export default function HomePage() {
 
           {/* Navegação principal */}
           <div className="flex items-center gap-2">
+            <a
+              href={NUTRI_WHATS_LINK}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400"
+            >
+              Falar com Nutricionista
+            </a>
+
             <Link
               href="/catalogo"
               className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium ring-1 ring-white/10 hover:bg-white/15"

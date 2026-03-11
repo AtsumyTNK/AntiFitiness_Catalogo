@@ -11,6 +11,16 @@ import { useEffect, useMemo, useState } from "react";
 const WHATS_AVAILABILITY_NOTE = "Verificar disponibilidade no WhatsApp.";
 
 /**
+ * Link do nutricionista com mensagem pronta.
+ */
+const NUTRI_WHATS_NUMBER = "5517997429113";
+const NUTRI_WHATS_MESSAGE =
+  "Olá! Vim pelo Catálogo Online do AntiFitness e gostaria de falar com o nutricionista.";
+const NUTRI_WHATS_LINK = `https://wa.me/${NUTRI_WHATS_NUMBER}?text=${encodeURIComponent(
+  NUTRI_WHATS_MESSAGE
+)}`;
+
+/**
  * Shape do produto retornado por /api/products.
  */
 type CatalogProduct = {
@@ -93,6 +103,16 @@ export default function CatalogoPage() {
   const [page, setPage] = useState(1);
 
   /**
+   * Faz a tela voltar para o topo de forma suave.
+   */
+  function scrollToTop() {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+  /**
    * Carrega os produtos do backend.
    */
   useEffect(() => {
@@ -138,6 +158,7 @@ export default function CatalogoPage() {
     setQ("");
     setCategory("TODAS");
     setPage(1);
+    scrollToTop();
   }
 
   /**
@@ -190,12 +211,20 @@ export default function CatalogoPage() {
     return filtered.slice(start, end);
   }, [filtered, safePage]);
 
+  /**
+   * Vai para a página anterior e retorna ao topo.
+   */
   function prevPage() {
     setPage((p) => clamp(p - 1, 1, totalPages));
+    scrollToTop();
   }
 
+  /**
+   * Vai para a próxima página e retorna ao topo.
+   */
   function nextPage() {
     setPage((p) => clamp(p + 1, 1, totalPages));
+    scrollToTop();
   }
 
   if (loading) {
@@ -244,7 +273,7 @@ export default function CatalogoPage() {
 
       {/* Header principal */}
       <header className="sticky top-0 z-20 border-b border-white/10 bg-neutral-950/60 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
           {/* Bloco da marca */}
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10">
@@ -265,7 +294,16 @@ export default function CatalogoPage() {
           </div>
 
           {/* Navegação do topo */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={NUTRI_WHATS_LINK}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400"
+            >
+              Falar com Nutricionista
+            </a>
+
             <Link
               href="/"
               className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium ring-1 ring-white/10 hover:bg-white/15"
@@ -397,7 +435,7 @@ export default function CatalogoPage() {
                   key={p.id}
                   className="group overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.9)] transition hover:-translate-y-0.5 hover:bg-white/7"
                 >
-                  <div className="relative">  
+                  <div className="relative">
                     <div className="relative aspect-square w-full overflow-hidden bg-white/5">
                       <Image
                         src={img}

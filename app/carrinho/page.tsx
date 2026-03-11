@@ -1,19 +1,35 @@
 "use client";
 
 import { CartItem, clearCart, getCart, removeCartItem, updateCartItem } from "@/lib/cart";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 const WHATS_NUMBER = "5517981229285";
 const WHATS_AVAILABILITY_NOTE = "Verificar disponibilidade no WhatsApp.";
 
+/**
+ * Link do nutricionista com mensagem pronta.
+ */
+const NUTRI_WHATS_NUMBER = "5517997429113";
+const NUTRI_WHATS_MESSAGE =
+  "Olá! Vim pelo Catálogo Online do AntiFitness e gostaria de falar com o nutricionista.";
+const NUTRI_WHATS_LINK = `https://wa.me/${NUTRI_WHATS_NUMBER}?text=${encodeURIComponent(
+  NUTRI_WHATS_MESSAGE
+)}`;
+
 type CityChoice = "" | "RIO_PRETO" | "OUTRA";
 
+/**
+ * Monta a URL do WhatsApp com a mensagem do carrinho.
+ */
 function buildWhatsUrl(message: string) {
   return `https://wa.me/${WHATS_NUMBER}?text=${encodeURIComponent(message)}`;
 }
 
-/** Compat Layer (se algum carrinho antigo existir no storage) */
+/**
+ * Compat Layer para suportar formatos antigos e novos do carrinho.
+ */
 type LegacyCartFields = Partial<{
   productSlug: string;
   productName: string;
@@ -63,9 +79,15 @@ function getKey(i: CartItem): string {
 }
 
 export default function CarrinhoPage() {
+  /**
+   * hydrated controla a leitura do carrinho apenas no client.
+   */
   const [hydrated, setHydrated] = useState(false);
   const [items, setItems] = useState<CartItem[]>([]);
 
+  /**
+   * Campos usados para entrega local.
+   */
   const [city, setCity] = useState<CityChoice>("");
   const [bairro, setBairro] = useState("");
   const [numeroCasa, setNumeroCasa] = useState("");
@@ -77,6 +99,9 @@ export default function CarrinhoPage() {
     setItems(getCart());
   }, []);
 
+  /**
+   * Total de itens do carrinho.
+   */
   const totalItems = useMemo(() => items.reduce((acc, i) => acc + getQty(i), 0), [items]);
 
   function sync() {
@@ -114,6 +139,9 @@ export default function CarrinhoPage() {
     sync();
   }
 
+  /**
+   * Monta a mensagem que será enviada para o WhatsApp.
+   */
   function buildMessage() {
     const lines = items.map((i) => `- ${getQty(i)}x ${getName(i)} — ${getVariantLabel(i)}`);
 
@@ -155,10 +183,12 @@ export default function CarrinhoPage() {
       alert("Seu carrinho está vazio.");
       return;
     }
+
     if (!city) {
       alert("Selecione se você está em São José do Rio Preto ou em outra cidade.");
       return;
     }
+
     window.location.href = buildWhatsUrl(buildMessage());
   }
 
@@ -166,21 +196,50 @@ export default function CarrinhoPage() {
 
   return (
     <main className="min-h-screen bg-neutral-950 text-white">
+      {/* Fundo decorativo */}
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute -top-40 left-1/2 h-130 w-130 -translate-x-1/2 rounded-full bg-emerald-500/15 blur-[90px]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.10),transparent_60%)]" />
       </div>
 
+      {/* Header */}
       <header className="sticky top-0 z-20 border-b border-white/10 bg-neutral-950/60 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="leading-tight">
-            <p className="text-xs text-white/50">Carrinho</p>
-            <h1 className="text-lg font-semibold tracking-tight">AntiFitness</h1>
-            <p className="mt-2 text-xs text-white/60">{WHATS_AVAILABILITY_NOTE}</p>
+          {/* Marca */}
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10">
+              <Image
+                src="/logo.svg"
+                alt="Logo AntiFitness"
+                width={40}
+                height={40}
+                className="h-10 w-10 object-contain"
+                priority
+              />
+            </div>
+
+            <div className="leading-tight">
+              <p className="text-xs text-white/50">Carrinho</p>
+              <h1 className="text-lg font-semibold tracking-tight">AntiFitness</h1>
+              <p className="mt-2 text-xs text-white/60">{WHATS_AVAILABILITY_NOTE}</p>
+            </div>
           </div>
 
+          {/* Navegação e ação externa */}
           <div className="flex flex-wrap items-center gap-2">
-            <Link href="/" className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium ring-1 ring-white/10 hover:bg-white/15">
+            <a
+              href={NUTRI_WHATS_LINK}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400"
+            >
+              Falar com Nutricionista
+            </a>
+
+            <Link
+              href="/"
+              className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium ring-1 ring-white/10 hover:bg-white/15"
+            >
               Home
             </Link>
 
@@ -203,7 +262,9 @@ export default function CarrinhoPage() {
         </div>
       </header>
 
+      {/* Conteúdo */}
       <section className="mx-auto grid max-w-6xl grid-cols-1 gap-4 px-4 py-6 sm:py-8 lg:grid-cols-12">
+        {/* Lista do carrinho */}
         <div className="lg:col-span-8">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.9)]">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -241,7 +302,10 @@ export default function CarrinhoPage() {
             ) : (
               <div className="mt-6 space-y-3">
                 {items.map((i) => (
-                  <div key={getKey(i)} className="rounded-3xl border border-white/10 bg-white/5 p-4 transition hover:bg-white/7">
+                  <div
+                    key={getKey(i)}
+                    className="rounded-3xl border border-white/10 bg-white/5 p-4 transition hover:bg-white/7"
+                  >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold">{getName(i)}</p>
@@ -259,14 +323,22 @@ export default function CarrinhoPage() {
                     </div>
 
                     <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="inline-flex items-center justify-between gap-2 rounded-2xl bg-neutral-950/40 p-1 ring-1 ring-white/10 w-full sm:w-auto">
-                        <button onClick={() => dec(i)} className="grid h-10 w-12 place-items-center rounded-2xl bg-white/10 text-sm font-semibold hover:bg-white/15" type="button">
+                      <div className="inline-flex w-full items-center justify-between gap-2 rounded-2xl bg-neutral-950/40 p-1 ring-1 ring-white/10 sm:w-auto">
+                        <button
+                          onClick={() => dec(i)}
+                          className="grid h-10 w-12 place-items-center rounded-2xl bg-white/10 text-sm font-semibold hover:bg-white/15"
+                          type="button"
+                        >
                           −
                         </button>
 
                         <span className="min-w-10 text-center text-sm font-semibold">{getQty(i)}</span>
 
-                        <button onClick={() => inc(i)} className="grid h-10 w-12 place-items-center rounded-2xl bg-white/10 text-sm font-semibold hover:bg-white/15" type="button">
+                        <button
+                          onClick={() => inc(i)}
+                          className="grid h-10 w-12 place-items-center rounded-2xl bg-white/10 text-sm font-semibold hover:bg-white/15"
+                          type="button"
+                        >
                           +
                         </button>
                       </div>
@@ -280,10 +352,13 @@ export default function CarrinhoPage() {
           </div>
         </div>
 
+        {/* Finalização */}
         <aside className="lg:col-span-4">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.9)]">
             <h3 className="text-base font-semibold">Finalizar no WhatsApp</h3>
-            <p className="mt-2 text-sm text-white/60">Selecione sua cidade. Para entrega local, preencha o endereço completo.</p>
+            <p className="mt-2 text-sm text-white/60">
+              Selecione sua cidade. Para entrega local, preencha o endereço completo.
+            </p>
 
             <div className="mt-5">
               <label className="text-sm font-medium text-white/80">Você está em São José do Rio Preto?</label>
@@ -303,22 +378,38 @@ export default function CarrinhoPage() {
               <div className="mt-4 space-y-3">
                 <div>
                   <label className="text-sm font-medium text-white/80">Bairro / Endereço</label>
-                  <input value={bairro} onChange={(e) => setBairro(e.target.value)} className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950/40 px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-emerald-500/40 focus:ring-2 focus:ring-emerald-500/20" />
+                  <input
+                    value={bairro}
+                    onChange={(e) => setBairro(e.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950/40 px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-emerald-500/40 focus:ring-2 focus:ring-emerald-500/20"
+                  />
                 </div>
 
                 <div>
                   <label className="text-sm font-medium text-white/80">Nº da casa</label>
-                  <input value={numeroCasa} onChange={(e) => setNumeroCasa(e.target.value)} className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950/40 px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-emerald-500/40 focus:ring-2 focus:ring-emerald-500/20" />
+                  <input
+                    value={numeroCasa}
+                    onChange={(e) => setNumeroCasa(e.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950/40 px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-emerald-500/40 focus:ring-2 focus:ring-emerald-500/20"
+                  />
                 </div>
 
                 <div>
                   <label className="text-sm font-medium text-white/80">Local de referência</label>
-                  <input value={referencia} onChange={(e) => setReferencia(e.target.value)} className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950/40 px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-emerald-500/40 focus:ring-2 focus:ring-emerald-500/20" />
+                  <input
+                    value={referencia}
+                    onChange={(e) => setReferencia(e.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950/40 px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-emerald-500/40 focus:ring-2 focus:ring-emerald-500/20"
+                  />
                 </div>
 
                 <div>
                   <label className="text-sm font-medium text-white/80">Preferência de período</label>
-                  <input value={periodo} onChange={(e) => setPeriodo(e.target.value)} className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950/40 px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-emerald-500/40 focus:ring-2 focus:ring-emerald-500/20" />
+                  <input
+                    value={periodo}
+                    onChange={(e) => setPeriodo(e.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950/40 px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-emerald-500/40 focus:ring-2 focus:ring-emerald-500/20"
+                  />
                 </div>
               </div>
             )}
@@ -337,7 +428,9 @@ export default function CarrinhoPage() {
               Enviar no WhatsApp
             </button>
 
-            <p className="mt-3 text-xs text-white/45">O WhatsApp vai abrir com a mensagem pronta. Basta apertar enviar.</p>
+            <p className="mt-3 text-xs text-white/45">
+              O WhatsApp vai abrir com a mensagem pronta. Basta apertar enviar.
+            </p>
           </div>
         </aside>
       </section>
