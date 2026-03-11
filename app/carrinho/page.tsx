@@ -300,50 +300,65 @@ export default function CarrinhoPage() {
                 </Link>
               </div>
             ) : (
-              <div className="mt-6 space-y-3">
+              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-2">
                 {items.map((i) => (
                   <div
                     key={getKey(i)}
-                    className="rounded-3xl border border-white/10 bg-white/5 p-4 transition hover:bg-white/7"
+                    className="rounded-2xl border border-white/10 bg-white/5 p-3 transition hover:bg-white/7 sm:rounded-3xl sm:p-4"
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold">{getName(i)}</p>
-                        <p className="mt-1 text-xs text-white/60">{getVariantLabel(i)}</p>
-                        <p className="mt-2 text-[11px] text-white/55">{WHATS_AVAILABILITY_NOTE}</p>
-                      </div>
-
-                      <button
-                        onClick={() => removeItem(i)}
-                        className="rounded-2xl bg-white/10 px-3 py-2 text-xs font-semibold ring-1 ring-white/10 hover:bg-white/15"
-                        type="button"
-                      >
-                        Remover
-                      </button>
-                    </div>
-
-                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="inline-flex w-full items-center justify-between gap-2 rounded-2xl bg-neutral-950/40 p-1 ring-1 ring-white/10 sm:w-auto">
-                        <button
-                          onClick={() => dec(i)}
-                          className="grid h-10 w-12 place-items-center rounded-2xl bg-white/10 text-sm font-semibold hover:bg-white/15"
-                          type="button"
-                        >
-                          −
-                        </button>
-
-                        <span className="min-w-10 text-center text-sm font-semibold">{getQty(i)}</span>
+                    <div className="flex h-full flex-col gap-4">
+                      {/* Topo do card */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="line-clamp-2 text-sm font-semibold leading-tight sm:text-base">
+                            {getName(i)}
+                          </p>
+                          <p className="mt-1 text-xs text-white/60 sm:text-sm">
+                            {getVariantLabel(i)}
+                          </p>
+                          <p className="mt-2 text-[10px] text-white/55 sm:text-[11px]">
+                            {WHATS_AVAILABILITY_NOTE}
+                          </p>
+                        </div>
 
                         <button
-                          onClick={() => inc(i)}
-                          className="grid h-10 w-12 place-items-center rounded-2xl bg-white/10 text-sm font-semibold hover:bg-white/15"
+                          onClick={() => removeItem(i)}
+                          className="shrink-0 rounded-xl bg-white/10 px-3 py-2 text-[11px] font-semibold ring-1 ring-white/10 transition hover:bg-white/15 sm:rounded-2xl sm:px-4 sm:text-xs"
                           type="button"
                         >
-                          +
+                          Remover
                         </button>
                       </div>
 
-                      <span className="text-xs text-white/50">Ajuste a quantidade antes de finalizar.</span>
+                      {/* Controle de quantidade */}
+                      <div className="rounded-2xl bg-neutral-950/40 p-1 ring-1 ring-white/10">
+                        <div className="flex items-center justify-between gap-2">
+                          <button
+                            onClick={() => dec(i)}
+                            className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 text-base font-semibold transition hover:bg-white/15 sm:h-11 sm:w-12 sm:rounded-2xl"
+                            type="button"
+                          >
+                            −
+                          </button>
+
+                          <span className="min-w-10 text-center text-base font-semibold">
+                            {getQty(i)}
+                          </span>
+
+                          <button
+                            onClick={() => inc(i)}
+                            className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 text-base font-semibold transition hover:bg-white/15 sm:h-11 sm:w-12 sm:rounded-2xl"
+                            type="button"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Rodapé do card */}
+                      <span className="text-[11px] text-white/50 sm:text-xs">
+                        Ajuste a quantidade antes de finalizar.
+                      </span>
                     </div>
                   </div>
                 ))}
