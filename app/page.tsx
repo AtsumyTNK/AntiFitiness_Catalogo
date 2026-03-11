@@ -3,7 +3,7 @@
 import { CartItem, getCart } from "@/lib/cart";
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const WHATS_NUMBER = "5517981229285";
 const WHATS_AVAILABILITY_NOTE = "Verificar disponibilidade no WhatsApp.";
@@ -77,12 +77,18 @@ function getVariantLabel(i: CartItem): string {
 
 export default function HomePage() {
   /**
-   * Lê o carrinho no client sem depender de useEffect.
+   * Estado inicial estável para evitar mismatch entre servidor e cliente.
    */
-  const [items] = useState<CartItem[]>(() => {
-    if (typeof window === "undefined") return [];
-    return getCart();
-  });
+  const [hydrated, setHydrated] = useState(false);
+  const [items, setItems] = useState<CartItem[]>([]);
+
+  /**
+   * Lê o carrinho apenas depois da hidratação.
+   */
+  useEffect(() => {
+    setItems(getCart());
+    setHydrated(true);
+  }, []);
 
   /**
    * Soma a quantidade total de itens do carrinho.
@@ -113,6 +119,8 @@ export default function HomePage() {
    * Abre o WhatsApp com a lista pronta.
    */
   function openWhatsAppWithCart() {
+    if (!hydrated) return;
+
     const current = getCart();
 
     if (current.length === 0) {
@@ -178,7 +186,7 @@ export default function HomePage() {
               href="/carrinho"
               className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-white px-4 py-2 text-center text-sm font-semibold text-neutral-950 hover:bg-white/90 md:min-h-0"
             >
-              Carrinho (<span suppressHydrationWarning>{totalItems}</span>)
+              Carrinho (<span>{hydrated ? totalItems : 0}</span>)
             </Link>
           </div>
         </div>
@@ -239,7 +247,7 @@ export default function HomePage() {
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold">Carrinho</p>
                   <span className="rounded-full bg-white/10 px-3 py-1 text-xs ring-1 ring-white/10">
-                    <span suppressHydrationWarning>{totalItems}</span> item(ns)
+                    <span>{hydrated ? totalItems : 0}</span> item(ns)
                   </span>
                 </div>
 
@@ -256,10 +264,10 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={openWhatsAppWithCart}
-                    disabled={totalItems === 0}
+                    disabled={!hydrated || totalItems === 0}
                     className={[
                       "inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold",
-                      totalItems === 0
+                      !hydrated || totalItems === 0
                         ? "bg-white/10 text-white/40 ring-1 ring-white/10 cursor-not-allowed"
                         : "bg-emerald-500 text-neutral-950 hover:bg-emerald-400",
                     ].join(" ")}
