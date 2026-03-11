@@ -36,9 +36,18 @@ type CatalogProduct = {
 };
 
 /**
- * Quantidade de cards por página.
+ * Quantidade por página:
+ * - mobile: 10
+ * - web/tablet: 9
  */
-const PAGE_SIZE = 9;
+const MOBILE_PAGE_SIZE = 10;
+const DESKTOP_PAGE_SIZE = 9;
+
+/**
+ * Breakpoint usado para considerar mobile.
+ * Aqui seguimos a mesma lógica do Tailwind para telas menores que sm.
+ */
+const MOBILE_MAX_WIDTH = 639;
 
 /**
  * Mantém o valor dentro do intervalo permitido.
@@ -78,6 +87,16 @@ function safeImageSrc(src: unknown) {
   return s.length > 0 ? s : "/placeholder.png";
 }
 
+/**
+ * Faz um corte visual seguro na descrição.
+ * Isso evita textos muito grandes no card e mantém o texto completo na página de detalhes.
+ */
+function truncateDescription(text: string, maxChars: number) {
+  const clean = String(text || "").trim();
+  if (clean.length <= maxChars) return clean;
+  return `${clean.slice(0, maxChars).trimEnd()}...`;
+}
+
 export default function CatalogoPage() {
   /**
    * Estado com os produtos vindos da API.
@@ -103,6 +122,12 @@ export default function CatalogoPage() {
   const [page, setPage] = useState(1);
 
   /**
+   * Detecta se está em viewport mobile.
+   * Isso afeta apenas a quantidade de produtos por página.
+   */
+  const [isMobile, setIsMobile] = useState(false);
+
+  /**
    * Faz a tela voltar para o topo de forma suave.
    */
   function scrollToTop() {
@@ -111,6 +136,22 @@ export default function CatalogoPage() {
       behavior: "smooth",
     });
   }
+
+  /**
+   * Detecta mobile em tempo real.
+   */
+  useEffect(() => {
+    function checkViewport() {
+      setIsMobile(window.innerWidth <= MOBILE_MAX_WIDTH);
+    }
+
+    checkViewport();
+    window.addEventListener("resize", checkViewport);
+
+    return () => {
+      window.removeEventListener("resize", checkViewport);
+    };
+  }, []);
 
   /**
    * Carrega os produtos do backend.
@@ -193,9 +234,29 @@ export default function CatalogoPage() {
   }, [items, q, category]);
 
   /**
+   * Tamanho da página depende do tipo de viewport.
+   * - mobile: 10
+   * - web/tablet: 9
+   */
+  const pageSize = useMemo(
+    () => (isMobile ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE),
+    [isMobile]
+  );
+
+  /**
+   * Sempre que o pageSize mudar, garante que a página atual continue válida.
+   */
+  useEffect(() => {
+    setPage(1);
+  }, [pageSize]);
+
+  /**
    * Total de páginas do catálogo.
    */
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)), [filtered.length]);
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(filtered.length / pageSize)),
+    [filtered.length, pageSize]
+  );
 
   /**
    * Garante que a página atual nunca fique fora do intervalo válido.
@@ -206,10 +267,10 @@ export default function CatalogoPage() {
    * Itens exibidos na página atual.
    */
   const pageItems = useMemo(() => {
-    const start = (safePage - 1) * PAGE_SIZE;
-    const end = start + PAGE_SIZE;
+    const start = (safePage - 1) * pageSize;
+    const end = start + pageSize;
     return filtered.slice(start, end);
-  }, [filtered, safePage]);
+  }, [filtered, safePage, pageSize]);
 
   /**
    * Vai para a página anterior e retorna ao topo.
@@ -229,7 +290,7 @@ export default function CatalogoPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-neutral-950 text-white grid place-items-center px-6">
+      <main className="grid min-h-screen place-items-center bg-neutral-950 px-6 text-white">
         <p className="text-sm text-white/70">Carregando produtos...</p>
       </main>
     );
@@ -237,7 +298,7 @@ export default function CatalogoPage() {
 
   if (loadError) {
     return (
-      <main className="min-h-screen bg-neutral-950 text-white grid place-items-center px-6 text-center">
+      <main className="grid min-h-screen place-items-center bg-neutral-950 px-6 text-center text-white">
         <div className="w-full max-w-xl">
           <p className="text-lg font-semibold">Erro ao carregar catálogo</p>
           <p className="mt-2 text-sm text-white/60">{loadError}</p>
@@ -253,7 +314,7 @@ export default function CatalogoPage() {
 
             <Link
               href="/"
-              className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-neutral-950 hover:bg-emerald-400 text-center"
+              className="rounded-2xl bg-emerald-500 px-4 py-3 text-center text-sm font-semibold text-neutral-950 hover:bg-emerald-400"
             >
               Voltar para Home
             </Link>
@@ -273,7 +334,7 @@ export default function CatalogoPage() {
 
       {/* Header principal */}
       <header className="sticky top-0 z-20 border-b border-white/10 bg-neutral-950/60 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between">
           {/* Bloco da marca */}
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10">
@@ -294,26 +355,26 @@ export default function CatalogoPage() {
           </div>
 
           {/* Navegação do topo */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap md:items-center">
             <a
               href={NUTRI_WHATS_LINK}
               target="_blank"
               rel="noreferrer"
-              className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400"
+              className="col-span-2 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-emerald-500 px-4 py-2 text-center text-sm font-semibold text-neutral-950 hover:bg-emerald-400 md:col-span-1 md:min-h-0"
             >
               Falar com Nutricionista
             </a>
 
             <Link
               href="/"
-              className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium ring-1 ring-white/10 hover:bg-white/15"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-white/10 px-4 py-2 text-center text-sm font-medium ring-1 ring-white/10 hover:bg-white/15 md:min-h-0"
             >
               Home
             </Link>
 
             <Link
               href="/carrinho"
-              className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-white/90"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-white px-4 py-2 text-center text-sm font-semibold text-neutral-950 hover:bg-white/90 md:min-h-0"
             >
               Carrinho
             </Link>
@@ -398,7 +459,7 @@ export default function CatalogoPage() {
 
               <Link
                 href="/"
-                className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-neutral-950 hover:bg-emerald-400 text-center"
+                className="rounded-2xl bg-emerald-500 px-4 py-3 text-center text-sm font-semibold text-neutral-950 hover:bg-emerald-400"
               >
                 Voltar para Home
               </Link>
@@ -408,7 +469,7 @@ export default function CatalogoPage() {
       ) : (
         <>
           {/* Grade de produtos */}
-          <section className="mx-auto grid max-w-6xl grid-cols-1 gap-4 px-4 py-8 sm:grid-cols-2 lg:grid-cols-3">
+          <section className="mx-auto grid max-w-6xl grid-cols-2 gap-3 px-3 py-8 sm:grid-cols-2 sm:gap-4 sm:px-4 lg:grid-cols-3">
             {pageItems.map((p) => {
               const img = safeImageSrc(p.images?.[0]);
               const safeSlug = normalizeSlug(p.slug);
@@ -419,6 +480,7 @@ export default function CatalogoPage() {
                   : [{ id: "default", label: "Padrão", status: "ENCOMENDA" as const }];
 
               const chosen = selectedVariant[p.id] || variantOptions[0]?.label || "Padrão";
+              const shortDescription = truncateDescription(p.description, 180);
 
               function handleAdd() {
                 addToCart({
@@ -433,7 +495,7 @@ export default function CatalogoPage() {
               return (
                 <article
                   key={p.id}
-                  className="group overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.9)] transition hover:-translate-y-0.5 hover:bg-white/7"
+                  className="group flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.9)] transition hover:-translate-y-0.5 hover:bg-white/7 sm:rounded-3xl"
                 >
                   <div className="relative">
                     <div className="relative aspect-square w-full overflow-hidden bg-white/5">
@@ -441,24 +503,35 @@ export default function CatalogoPage() {
                         src={img}
                         alt={p.name}
                         fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 33vw"
                         className="object-contain transition-transform duration-500 group-hover:scale-110"
                       />
                     </div>
 
-                    <div className="absolute left-3 top-3 max-w-[92%]">
-                      <div className="rounded-2xl border border-white/10 bg-neutral-950/55 px-3 py-2 text-xs text-white/80 backdrop-blur">
+                    <div className="absolute left-2 top-2 max-w-[92%] sm:left-3 sm:top-3">
+                      <div className="rounded-xl border border-white/10 bg-neutral-950/55 px-2 py-1 text-[10px] text-white/80 backdrop-blur sm:rounded-2xl sm:px-3 sm:py-2 sm:text-xs">
                         {WHATS_AVAILABILITY_NOTE}
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-5">
-                    <h2 className="text-base font-semibold tracking-tight">{p.name}</h2>
-                    <p className="mt-2 line-clamp-2 text-sm text-white/65">{p.description}</p>
+                  <div className="flex flex-1 flex-col p-3 sm:p-5">
+                    <h2 className="min-h-[2.75rem] text-sm font-semibold tracking-tight sm:text-base lg:min-h-[3.5rem]">
+                      {p.name}
+                    </h2>
 
-                    <div className="mt-4">
-                      <label className="text-xs font-semibold text-white/70">Variação</label>
+                    {/* Mobile: mantém mais compacto */}
+                    <p className="mt-2 hidden text-sm text-white/65 sm:block lg:hidden">
+                      {shortDescription}
+                    </p>
+
+                    {/* Desktop: área fixa para descrição */}
+                    <div className="mt-2 hidden h-[108px] overflow-hidden lg:block">
+                      <p className="text-sm leading-7 text-white/65">{shortDescription}</p>
+                    </div>
+
+                    <div className="mt-3 sm:mt-4">
+                      <label className="text-[11px] font-semibold text-white/70 sm:text-xs">Variação</label>
                       <select
                         value={chosen}
                         onChange={(e) =>
@@ -467,7 +540,7 @@ export default function CatalogoPage() {
                             [p.id]: e.target.value,
                           }))
                         }
-                        className="mt-2 w-full rounded-2xl border border-white/10 bg-neutral-950/40 px-4 py-2 text-sm outline-none focus:border-emerald-500/40 focus:ring-2 focus:ring-emerald-500/20"
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-neutral-950/40 px-3 py-2 text-xs outline-none focus:border-emerald-500/40 focus:ring-2 focus:ring-emerald-500/20 sm:rounded-2xl sm:px-4 sm:text-sm"
                       >
                         {variantOptions.map((v) => (
                           <option key={v.id} value={v.label}>
@@ -476,18 +549,20 @@ export default function CatalogoPage() {
                         ))}
                       </select>
 
-                      <p className="mt-2 text-xs text-white/55">{WHATS_AVAILABILITY_NOTE}</p>
+                      <p className="mt-2 mb-6 text-[10px] text-white/55 sm:text-xs sm:mb-7">
+                        {WHATS_AVAILABILITY_NOTE}
+                      </p>
                     </div>
 
-                    <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="mt-7 grid grid-cols-1 gap-2 sm:mt-6 sm:grid-cols-2 lg:mt-auto">
                       <Link
                         href={safeSlug ? `/produto/${safeSlug}` : "/catalogo"}
                         aria-disabled={!safeSlug}
                         className={[
-                          "rounded-2xl px-4 py-3 text-center text-sm font-semibold",
+                          "rounded-xl px-3 py-2 text-center text-xs font-semibold sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm",
                           safeSlug
                             ? "bg-white text-neutral-950 hover:bg-white/90"
-                            : "bg-white/10 text-white/40 cursor-not-allowed",
+                            : "cursor-not-allowed bg-white/10 text-white/40",
                         ].join(" ")}
                       >
                         Ver produto
@@ -495,7 +570,7 @@ export default function CatalogoPage() {
 
                       <button
                         onClick={handleAdd}
-                        className="rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-neutral-950 hover:bg-emerald-400"
+                        className="rounded-xl bg-emerald-500 px-3 py-2 text-xs font-semibold text-neutral-950 hover:bg-emerald-400 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm"
                         type="button"
                       >
                         Adicionar
@@ -506,7 +581,7 @@ export default function CatalogoPage() {
                           href={p.shopee_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="sm:col-span-2 rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold ring-1 ring-white/10 hover:bg-white/15 text-center"
+                          className="rounded-xl bg-white/10 px-3 py-2 text-center text-xs font-semibold ring-1 ring-white/10 hover:bg-white/15 sm:col-span-2 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm"
                         >
                           Shopee
                         </a>

@@ -136,7 +136,7 @@ export default function HomePage() {
 
       {/* Header principal */}
       <header className="sticky top-0 z-20 border-b border-white/10 bg-neutral-950/60 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between">
           {/* Bloco da marca */}
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10">
@@ -157,26 +157,26 @@ export default function HomePage() {
           </div>
 
           {/* Navegação principal */}
-          <div className="flex items-center gap-2">
+          <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap md:items-center">
             <a
               href={NUTRI_WHATS_LINK}
               target="_blank"
               rel="noreferrer"
-              className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-emerald-400"
+              className="col-span-2 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-emerald-500 px-4 py-2 text-center text-sm font-semibold text-neutral-950 hover:bg-emerald-400 md:col-span-1 md:min-h-0"
             >
               Falar com Nutricionista
             </a>
 
             <Link
               href="/catalogo"
-              className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium ring-1 ring-white/10 hover:bg-white/15"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-white/10 px-4 py-2 text-center text-sm font-medium ring-1 ring-white/10 hover:bg-white/15 md:min-h-0"
             >
               Ver catálogo
             </Link>
 
             <Link
               href="/carrinho"
-              className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-white/90"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-white px-4 py-2 text-center text-sm font-semibold text-neutral-950 hover:bg-white/90 md:min-h-0"
             >
               Carrinho (<span suppressHydrationWarning>{totalItems}</span>)
             </Link>
