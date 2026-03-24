@@ -37,11 +37,11 @@ type CatalogProduct = {
 
 /**
  * Quantidade por página:
- * - mobile: 10
- * - web/tablet: 9
+ * - mobile: 15
+ * - web/tablet: 15
  */
-const MOBILE_PAGE_SIZE = 10;
-const DESKTOP_PAGE_SIZE = 9;
+const MOBILE_PAGE_SIZE = 15;
+const DESKTOP_PAGE_SIZE = 15;
 
 /**
  * Breakpoint usado para considerar mobile.
