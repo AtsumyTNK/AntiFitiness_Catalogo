@@ -1,114 +1,41 @@
 "use client";
 
-import { CartItem, getCart } from "@/lib/cart";
+import {
+  getCart,
+  getItemName,
+  getItemQty,
+  getItemVariantLabel,
+} from "@/lib/cart";
+import {
+  buildWhatsUrl,
+  NUTRI_WHATS_LINK,
+  WHATS_AVAILABILITY_NOTE,
+  WHATS_NUMBER,
+} from "@/lib/constants";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-const WHATS_NUMBER = "5517981229285";
-const WHATS_AVAILABILITY_NOTE = "Verificar disponibilidade no WhatsApp.";
-
-/**
- * Número e mensagem do nutricionista.
- */
-const NUTRI_WHATS_NUMBER = "5517997429113";
-const NUTRI_WHATS_MESSAGE =
-  "Olá! Vim pelo Catálogo Online do AntiFitness e gostaria de falar com o nutricionista.";
-const NUTRI_WHATS_LINK = `https://wa.me/${NUTRI_WHATS_NUMBER}?text=${encodeURIComponent(
-  NUTRI_WHATS_MESSAGE,
-)}`;
-
-/**
- * Monta a URL do WhatsApp com a mensagem pronta.
- */
-function buildWhatsUrl(message: string) {
-  return `https://wa.me/${WHATS_NUMBER}?text=${encodeURIComponent(message)}`;
-}
-
-/**
- * Compatibilidade com formatos antigos e novos do carrinho.
- */
-type LegacyCartFields = Partial<{
-  productName: string;
-  variantLabel: string;
-  quantity: number;
-}>;
-
-type NewCartFields = Partial<{
-  name: string;
-  variantLabel: string;
-  qty: number;
-}>;
-
-type CartItemCompat = CartItem & LegacyCartFields & NewCartFields;
-
-function asCompat(i: CartItem): CartItemCompat {
-  return i as CartItemCompat;
-}
-
-/**
- * Retorna a quantidade de forma segura.
- */
-function getQty(i: CartItem): number {
-  const c = asCompat(i);
-  const raw = c.qty ?? c.quantity ?? 0;
-  const n = Number(raw);
-
-  if (!Number.isFinite(n)) return 0;
-
-  return Math.max(0, Math.floor(n));
-}
-
-/**
- * Retorna o nome do produto de forma segura.
- */
-function getName(i: CartItem): string {
-  const c = asCompat(i);
-  return String(c.name ?? c.productName ?? "Produto");
-}
-
-/**
- * Retorna a variação de forma segura.
- */
-function getVariantLabel(i: CartItem): string {
-  const c = asCompat(i);
-  return String(c.variantLabel ?? "Padrão");
-}
-
 export default function HomePage() {
-  /**
-   * Estado inicial estável para evitar diferença entre servidor e cliente.
-   */
   const [hydrated, setHydrated] = useState(false);
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
 
-  /**
-   * Lê o carrinho apenas após a hidratação do client.
-   */
   useEffect(() => {
-    setItems(getCart());
+    const items = getCart();
+    setTotalItems(items.reduce((acc, i) => acc + getItemQty(i), 0));
     setHydrated(true);
   }, []);
 
-  /**
-   * Total de itens exibidos no header e no card lateral.
-   */
-  const totalItems = useMemo(
-    () => items.reduce((acc, i) => acc + getQty(i), 0),
-    [items],
-  );
-
-  /**
-   * Monta a mensagem que será enviada para o WhatsApp.
-   */
-  function buildMessageFromCart() {
-    const current = getCart();
-    const total = current.reduce((acc, i) => acc + getQty(i), 0);
-    const lines = current.map(
-      (i) => `- ${getQty(i)}x ${getName(i)} — ${getVariantLabel(i)}`,
-    );
-
-    return [
+  function openWhatsAppWithCart() {
+    if (!hydrated) return;
+    const items = getCart();
+    if (items.length === 0) {
+      alert("Seu carrinho está vazio. Adicione produtos antes de enviar no WhatsApp.");
+      return;
+    }
+    const lines = items.map((i) => `- ${getItemQty(i)}x ${getItemName(i)} — ${getItemVariantLabel(i)}`);
+    const total = items.reduce((acc, i) => acc + getItemQty(i), 0);
+    const message = [
       "Lista – Catálogo AntiFitness",
       "",
       "Itens:",
@@ -118,27 +45,10 @@ export default function HomePage() {
       "",
       WHATS_AVAILABILITY_NOTE,
     ].join("\n");
+    window.location.href = buildWhatsUrl(message);
   }
 
-  /**
-   * Abre o WhatsApp com a lista pronta.
-   */
-  function openWhatsAppWithCart() {
-    if (!hydrated) return;
-
-    const current = getCart();
-
-    if (current.length === 0) {
-      alert(
-        "Seu carrinho está vazio. Adicione produtos antes de enviar no WhatsApp.",
-      );
-      return;
-    }
-
-    window.location.href = buildWhatsUrl(buildMessageFromCart());
-  }
-
-  const whatsappDirect = `https://wa.me/${WHATS_NUMBER}`;
+  const cartCount = hydrated ? totalItems : 0;
 
   return (
     <main className="min-h-screen bg-neutral-950 text-white">
@@ -149,31 +59,18 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.10),transparent_60%)]" />
       </div>
 
-      {/* Header principal */}
       <header className="sticky top-0 z-20 border-b border-white/10 bg-neutral-950/60 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between">
-          {/* Bloco da marca */}
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10">
-              <Image
-                src="/logo.svg"
-                alt="Logo AntiFitness"
-                width={40}
-                height={40}
-                className="h-10 w-10 object-contain"
-                priority
-              />
+              <Image src="/logo.svg" alt="Logo AntiFitness" width={40} height={40} className="h-10 w-10 object-contain" priority />
             </div>
-
             <div className="leading-tight">
               <p className="text-sm text-white/70">Catálogo</p>
-              <h1 className="text-base font-semibold tracking-tight">
-                AntiFitness
-              </h1>
+              <h1 className="text-base font-semibold tracking-tight">AntiFitness</h1>
             </div>
           </div>
 
-          {/* Navegação principal */}
           <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap md:items-center">
             <a
               href={NUTRI_WHATS_LINK}
@@ -183,89 +80,56 @@ export default function HomePage() {
             >
               Falar com Nutricionista
             </a>
-
-            <Link
-              href="/catalogo"
-              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white/10 px-4 py-2 text-center text-sm font-medium ring-1 ring-white/10 hover:bg-white/15 md:min-h-0"
-            >
+            <Link href="/catalogo" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white/10 px-4 py-2 text-center text-sm font-medium ring-1 ring-white/10 hover:bg-white/15 md:min-h-0">
               Ver catálogo
             </Link>
-
-            <Link
-              href="/carrinho"
-              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-4 py-2 text-center text-sm font-semibold text-neutral-950 hover:bg-white/90 md:min-h-0"
-            >
-              Carrinho (<span>{hydrated ? totalItems : 0}</span>)
+            <Link href="/carrinho" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-4 py-2 text-center text-sm font-semibold text-neutral-950 hover:bg-white/90 md:min-h-0">
+              Carrinho ({cartCount})
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Conteúdo principal da home */}
       <section className="mx-auto max-w-6xl px-4 pb-8 pt-10">
         <div className="grid gap-6 md:grid-cols-12 md:items-center">
           <div className="md:col-span-7">
-            {/* Aviso curto acima do conteúdo principal */}
             <p className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-medium ring-1 ring-white/10">
               {WHATS_AVAILABILITY_NOTE}
             </p>
 
-            {/* Hero principal ajustado para mobile e web */}
             <div className="mt-4 max-w-2xl">
               <h2 className="leading-[0.98] tracking-tight sm:leading-tight">
-                {/* Mobile */}
                 <span className="block text-[2.1rem] font-semibold sm:hidden">
                   <span className="block text-white/95">O poder da</span>
                   <span className="block font-bold text-emerald-400">natureza</span>
                   <span className="mt-2 block text-white/95">na sua rotina</span>
                   <span className="block font-bold text-emerald-400">fitness</span>
                 </span>
-
-                {/* Web / tablet */}
                 <span className="hidden sm:block text-3xl font-semibold md:text-4xl lg:text-5xl">
-                  <span className="block text-white/90">
-                    O poder da{" "}
-                    <span className="font-bold text-emerald-400">natureza</span>
-                  </span>
-
-                  <span className="mt-1 block text-white/90">
-                    na sua rotina{" "}
-                    <span className="font-bold text-emerald-400">fitness</span>
-                  </span>
+                  <span className="block text-white/90">O poder da <span className="font-bold text-emerald-400">natureza</span></span>
+                  <span className="mt-1 block text-white/90">na sua rotina <span className="font-bold text-emerald-400">fitness</span></span>
                 </span>
               </h2>
 
-              {/* Subheadline */}
               <div className="mt-5 space-y-2 sm:mt-6">
                 <p className="text-lg font-semibold leading-tight text-white sm:text-xl md:text-2xl">
                   Produtos <span className="text-lime-300">100% naturais</span>
                 </p>
-
                 <p className="max-w-xl text-sm leading-relaxed text-white/75 sm:text-base">
-                  Sem agrotóxicos e feitos para melhorar sua performance com
-                  equilíbrio e qualidade.
+                  Sem agrotóxicos e feitos para melhorar sua performance com equilíbrio e qualidade.
                 </p>
               </div>
             </div>
 
-            {/* Botões principais da home */}
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/catalogo"
-                className="inline-flex items-center justify-center rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-neutral-950 shadow-[0_10px_30px_-12px_rgba(16,185,129,0.6)] hover:bg-emerald-400"
-              >
+              <Link href="/catalogo" className="inline-flex items-center justify-center rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-neutral-950 shadow-[0_10px_30px_-12px_rgba(16,185,129,0.6)] hover:bg-emerald-400">
                 Ir para o catálogo
               </Link>
-
-              <Link
-                href="/carrinho"
-                className="inline-flex items-center justify-center rounded-2xl bg-white/10 px-5 py-3 text-sm font-semibold ring-1 ring-white/10 hover:bg-white/15"
-              >
+              <Link href="/carrinho" className="inline-flex items-center justify-center rounded-2xl bg-white/10 px-5 py-3 text-sm font-semibold ring-1 ring-white/10 hover:bg-white/15">
                 Abrir carrinho
               </Link>
-
               <a
-                href={whatsappDirect}
+                href={`https://wa.me/${WHATS_NUMBER}`}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center justify-center rounded-2xl bg-white/5 px-5 py-3 text-sm font-semibold ring-1 ring-white/10 hover:bg-white/10"
@@ -273,54 +137,36 @@ export default function HomePage() {
                 WhatsApp direto
               </a>
             </div>
-
-            <p className="mt-3 text-xs text-white/50">
-              Para enviar a lista do carrinho, use o botão “Enviar lista”
-              abaixo.
-            </p>
+            <p className="mt-3 text-xs text-white/50">Para enviar a lista do carrinho, use o botão "Enviar lista" abaixo.</p>
           </div>
 
-          {/* Blocos laterais */}
           <div className="md:col-span-5">
             <div className="grid gap-3">
-              {/* Card do carrinho */}
               <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.8)]">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold">Carrinho</p>
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs ring-1 ring-white/10">
-                    <span>{hydrated ? totalItems : 0}</span> item(ns)
-                  </span>
+                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs ring-1 ring-white/10">{cartCount} item(ns)</span>
                 </div>
-
-                <p className="mt-2 text-sm text-white/70">
-                  Envie a lista pronta no WhatsApp.
-                </p>
-
+                <p className="mt-2 text-sm text-white/70">Envie a lista pronta no WhatsApp.</p>
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  <Link
-                    href="/carrinho"
-                    className="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-neutral-950 hover:bg-white/90"
-                  >
+                  <Link href="/carrinho" className="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-neutral-950 hover:bg-white/90">
                     Finalizar
                   </Link>
-
                   <button
                     type="button"
                     onClick={openWhatsAppWithCart}
-                    disabled={!hydrated || totalItems === 0}
-                    className={[
-                      "inline-flex items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold",
-                      !hydrated || totalItems === 0
-                        ? "cursor-not-allowed bg-white/10 text-white/40 ring-1 ring-white/10"
-                        : "bg-emerald-500 text-neutral-950 hover:bg-emerald-400",
-                    ].join(" ")}
+                    disabled={!hydrated || cartCount === 0}
+                    className={
+                      !hydrated || cartCount === 0
+                        ? "inline-flex cursor-not-allowed items-center justify-center rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-white/40 ring-1 ring-white/10"
+                        : "inline-flex items-center justify-center rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-neutral-950 hover:bg-emerald-400"
+                    }
                   >
                     Enviar lista
                   </button>
                 </div>
               </div>
 
-              {/* Card de explicação */}
               <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
                 <p className="text-sm font-semibold">Como funciona</p>
                 <ul className="mt-3 space-y-2 text-sm text-white/70">
@@ -334,7 +180,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Rodapé */}
       <footer className="mx-auto max-w-6xl px-4 pb-10 pt-6 text-xs text-white/40">
         AntiFitness • Catálogo simples e rápido
       </footer>

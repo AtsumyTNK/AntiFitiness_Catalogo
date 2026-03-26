@@ -1,7 +1,8 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { addToCart } from "@/lib/cart";
+import { WHATS_AVAILABILITY_NOTE } from "@/lib/constants";
+import { clamp } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -15,14 +16,10 @@ type ApiProduct = {
   images: string[];
   status: "DISPONIVEL" | "SEM_ESTOQUE" | "ENCOMENDA";
   category: string;
-  variants: { id: string; label: string; status: "DISPONIVEL" | "SEM_ESTOQUE" | "ENCOMENDA" }[];
+  variants: { id: string; label: string; status: "DISPONIVEL" | "SEM_ESTOQUE" | "ENCOMENDA"; price: number | null; price_discounted: number | null }[];
 };
 
-const WHATS_AVAILABILITY_NOTE = "Verificar disponibilidade no WhatsApp.";
 
-/**
- * Normaliza slug para comparação segura.
- */
 function normalizeSlug(input: unknown): string {
   if (typeof input !== "string") return "";
   const noQuery = input.split("?")[0].split("#")[0];
@@ -32,13 +29,6 @@ function normalizeSlug(input: unknown): string {
   } catch {
     return noQuery.trim().toLowerCase();
   }
-}
-
-/**
- * Mantém o valor dentro do intervalo permitido.
- */
-function clamp(n: number, min: number, max: number) {
-  return Math.min(Math.max(n, min), max);
 }
 
 export default function ProdutoClient(props?: { slug?: string }) {
@@ -51,30 +41,17 @@ export default function ProdutoClient(props?: { slug?: string }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  /**
-   * Estado do feedback visual ao adicionar ao carrinho.
-   */
   const [justAdded, setJustAdded] = useState(false);
   const [inlineNotice, setInlineNotice] = useState<string | null>(null);
   const addedTimerRef = useRef<number | null>(null);
-
-  /**
-   * Estado do modal da imagem.
-   */
   const [isImageOpen, setIsImageOpen] = useState(false);
 
-  /**
-   * Limpa timer do feedback do botão.
-   */
   useEffect(() => {
     return () => {
       if (addedTimerRef.current) window.clearTimeout(addedTimerRef.current);
     };
   }, []);
 
-  /**
-   * Fecha o modal da imagem ao pressionar ESC.
-   */
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -86,9 +63,6 @@ export default function ProdutoClient(props?: { slug?: string }) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  /**
-   * Carrega os produtos da API.
-   */
   useEffect(() => {
     let alive = true;
 
@@ -118,22 +92,16 @@ export default function ProdutoClient(props?: { slug?: string }) {
     };
   }, []);
 
-  /**
-   * Localiza o produto pelo slug da URL.
-   */
   const product = useMemo(() => {
     if (!normalizedSlug) return undefined;
     return items.find((p) => normalizeSlug(p.slug) === normalizedSlug);
   }, [items, normalizedSlug]);
 
-  /**
-   * Garante uma variação padrão caso não existam variantes.
-   */
   const variantOptions = useMemo(() => {
     if (!product) return [];
     return product.variants?.length
       ? product.variants
-      : [{ id: "default", label: "Padrão", status: "ENCOMENDA" as const }];
+      : [{ id: "default", label: "Padrão", status: "ENCOMENDA" as const, price: null, price_discounted: null }];
   }, [product]);
 
   const firstVariantId = useMemo(() => variantOptions[0]?.id ?? "", [variantOptions]);
@@ -143,25 +111,16 @@ export default function ProdutoClient(props?: { slug?: string }) {
 
   const effectiveVariantId = variantId || firstVariantId;
 
-  /**
-   * Recupera a variação selecionada com segurança.
-   */
   const selectedVariant = useMemo(() => {
     if (!product) return null;
     return variantOptions.find((v) => v.id === effectiveVariantId) ?? variantOptions[0] ?? null;
   }, [product, variantOptions, effectiveVariantId]);
 
-  /**
-   * Permite adicionar ao carrinho apenas quando disponível.
-   */
   const canAdd = useMemo(() => {
     if (!product || !selectedVariant) return false;
     return selectedVariant.status !== "SEM_ESTOQUE";
   }, [product, selectedVariant]);
 
-  /**
-   * Adiciona o item ao carrinho.
-   */
   function add() {
     if (!product || !selectedVariant) return;
 
@@ -178,6 +137,8 @@ export default function ProdutoClient(props?: { slug?: string }) {
       photo: product.images?.[0],
       variantLabel: selectedVariant.label,
       qty,
+      price: selectedVariant.price ?? null,
+      price_discounted: selectedVariant.price_discounted ?? null,
     });
 
     setJustAdded(true);
@@ -284,6 +245,7 @@ export default function ProdutoClient(props?: { slug?: string }) {
           <aside className="md:col-span-5">
             <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
               <h2 className="text-lg font-semibold">{product.name}</h2>
+
 
               <p className="mt-2 text-sm text-white/60">{WHATS_AVAILABILITY_NOTE}</p>
 
