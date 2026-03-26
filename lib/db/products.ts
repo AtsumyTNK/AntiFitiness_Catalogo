@@ -1,5 +1,17 @@
-  import { supabase } from "@/lib/supabase";
+/**
+ * lib/db/products.ts
+ *
+ * Funções de acesso ao banco de dados (Supabase) para produtos e variações.
+ * Usado exclusivamente no lado servidor (Server Components / API Routes).
+ *
+ * Tabelas utilizadas:
+ *  - products         → dados básicos do produto (sku, name, description, photo_url, category)
+ *  - product_variants → variações do produto (label, price, price_discounted, sort_order)
+ */
 
+import { supabase } from "@/lib/supabase";
+
+/** Linha bruta da tabela `products` no Supabase. */
 export type DbProduct = {
   sku: string;
   name: string;
@@ -8,30 +20,17 @@ export type DbProduct = {
   category: string | null;
 };
 
-/**
- * Variação como vem do banco.
- * Tabela: product_variants
- * - id (uuid)
- * - product_sku (text) -> referencia products.sku (idealmente)
- * - label (text)
- * - sort_order (int)
- */
+/** Linha bruta da tabela `product_variants` no Supabase. */
 export type DbVariant = {
   id: string;
   product_sku: string;
   label: string;
   sort_order: number;
+  price: number | null;
+  price_discounted: number | null;
 };
 
-/**
- * ============================================================
- * Tipo final que a UI consome (Catálogo e Produto)
- * ============================================================
- * Regras do projeto:
- * - status do produto é fixo: "ENCOMENDA"
- * - status das variantes é fixo: "ENCOMENDA"
- * - category agora vem do banco (products.category)
- */
+/** Produto normalizado retornado para o catálogo front-end. */
 export type CatalogProduct = {
   id: string;
   slug: string;
@@ -44,19 +43,14 @@ export type CatalogProduct = {
     id: string;
     label: string;
     status: "ENCOMENDA";
+    /** Preço normal em R$ (null se não cadastrado). */
+    price: number | null;
+    /** Preço com desconto em R$ (null se não cadastrado). */
+    price_discounted: number | null;
   }[];
 };
 
-/**
- * ============================================================
- * Slugify
- * ============================================================
- * Gera slug previsível:
- * - remove acentos
- * - lower
- * - troca qualquer sequência não alfanumérica por "-"
- * - remove hífens sobrando no início/fim
- */
+/** Converte o nome do produto em slug URL-friendly (sem acentos, minúsculas, hifenizado). */
 function slugify(name: string): string {
   return name
     .normalize("NFD")
@@ -67,36 +61,19 @@ function slugify(name: string): string {
     .replace(/(^-+|-+$)/g, "");
 }
 
-/**
- * ============================================================
- * Normalização de categoria
- * ============================================================
- * Evita:
- * - categoria vazia quebrando o filtro (fica "")
- * - espaços sobrando criando categorias duplicadas (ex: "Mix " vs "Mix")
- *
- * Dica: se você quiser forçar um padrão (ex: Title Case), dá pra fazer aqui.
- */
 function normalizeCategory(input: unknown): string {
-  if (typeof input !== "string") return "";
-  return input.trim();
+  return typeof input === "string" ? input.trim() : "";
 }
 
 /**
- * ============================================================
- * fetchCatalogProducts
- * ============================================================
- * Busca:
- * - products (SKU, nome, descrição, foto, categoria)
- * - product_variants (vinculadas por product_sku)
+ * Busca todos os produtos e suas variações no Supabase e retorna
+ * no formato `CatalogProduct[]` pronto para uso no catálogo.
  *
- * Retorna no formato exato da UI.
+ * - Produtos sem variações cadastradas recebem uma variação padrão ("Padrão").
+ * - Produtos sem foto recebem "/placeholder.png".
+ * @throws Error se a consulta ao Supabase falhar.
  */
 export async function fetchCatalogProducts(): Promise<CatalogProduct[]> {
-  /**
-   * 1) Produtos
-   * - IMPORTANTE: incluímos `category` no select.
-   */
   const { data: productsRaw, error: pErr } = await supabase
     .from("products")
     .select("sku,name,description,photo_url,category")
@@ -107,21 +84,16 @@ export async function fetchCatalogProducts(): Promise<CatalogProduct[]> {
   const products = (productsRaw ?? []) as DbProduct[];
   if (products.length === 0) return [];
 
-  /**
-   * 2) Variações
-   */
   const { data: variantsRaw, error: vErr } = await supabase
     .from("product_variants")
-    .select("id,product_sku,label,sort_order")
+    .select("id,product_sku,label,sort_order,price,price_discounted")
     .order("sort_order", { ascending: true });
 
   if (vErr) throw new Error(vErr.message);
 
   const variants = (variantsRaw ?? []) as DbVariant[];
 
-  /**
-   * 3) Indexa variações por SKU para lookup O(1)
-   */
+  // Agrupa variações por SKU do produto para lookup O(1)
   const bySku = new Map<string, DbVariant[]>();
   for (const v of variants) {
     const arr = bySku.get(v.product_sku);
@@ -129,51 +101,30 @@ export async function fetchCatalogProducts(): Promise<CatalogProduct[]> {
     else bySku.set(v.product_sku, [v]);
   }
 
-  /**
-   * 4) Monta o shape final da UI
-   * - category vem do banco (products.category)
-   * - fallback: "" (assim o filtro só funciona quando você preencher)
-   */
   return products.map((p) => {
     const v = bySku.get(p.sku) ?? [];
-
-    // “Blindagem” básica (evita undefined em edge-cases)
-    const safeName = p.name ?? "";
-    const safeDescription = p.description ?? "";
-
-    // Slug sempre válido (se slugify falhar, usa o SKU)
-    const slug = slugify(safeName) || p.sku;
-
-    // Imagem: se não tiver URL, cai no placeholder local
+    const slug = slugify(p.name ?? "") || p.sku;
     const imageUrl = p.photo_url || "/placeholder.png";
 
-    // Categoria: agora vem do banco
-    const category = normalizeCategory(p.category);
-
-    // Variações: garante pelo menos 1 opção pra UI nunca quebrar
     const mappedVariants =
       v.length > 0
         ? v.map((x) => ({
             id: x.id,
             label: x.label,
             status: "ENCOMENDA" as const,
+            price: x.price ?? null,
+            price_discounted: x.price_discounted ?? null,
           }))
-        : [
-            {
-              id: "default",
-              label: "Padrão",
-              status: "ENCOMENDA" as const,
-            },
-          ];
+        : [{ id: "default", label: "Padrão", status: "ENCOMENDA" as const, price: null, price_discounted: null }];
 
     return {
       id: p.sku,
       slug,
-      name: safeName,
-      description: safeDescription,
+      name: p.name ?? "",
+      description: p.description ?? "",
       images: [imageUrl],
       status: "ENCOMENDA",
-      category,
+      category: normalizeCategory(p.category),
       variants: mappedVariants,
     };
   });
